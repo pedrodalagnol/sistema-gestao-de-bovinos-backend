@@ -27,6 +27,6 @@ public class Lote {
     @JoinColumn(name = "fazenda_id", nullable = false)
     private Fazenda fazenda;
 
-    @OneToMany(mappedBy = "lote", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "lote", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Animal> animais = new ArrayList<>();
 }

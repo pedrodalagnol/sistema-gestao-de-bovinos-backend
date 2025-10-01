@@ -27,6 +27,8 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults()) // <-- ADICIONE ESTA LINHA AQUI
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/pastos/**").authenticated()
+                        .requestMatchers("/api/estoque/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
