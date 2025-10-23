@@ -127,13 +127,23 @@ public class PastoService {
 
     private PastoResponseDTO convertToResponseDTO(Pasto pasto) {
         Double taxaOcupacao = calcularTaxaOcupacao(pasto);
+        com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteResponseDTO loteDto = null;
+        if (pasto.getLoteAlocado() != null) {
+            loteDto = new com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteResponseDTO(
+                    pasto.getLoteAlocado().getId(), 
+                    pasto.getLoteAlocado().getNome(), 
+                    pasto.getLoteAlocado().getDescricao(),
+                    pasto.getNome() // O lote está neste pasto
+            );
+        }
+
         return new PastoResponseDTO(
                 pasto.getId(),
                 pasto.getNome(),
                 pasto.getAreaHa(),
                 pasto.getStatus(),
                 pasto.getDataInicioStatus(),
-                pasto.getLoteAlocado() != null ? new com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteResponseDTO(pasto.getLoteAlocado().getId(), pasto.getLoteAlocado().getNome(), pasto.getLoteAlocado().getDescricao()) : null,
+                loteDto,
                 taxaOcupacao
         );
     }

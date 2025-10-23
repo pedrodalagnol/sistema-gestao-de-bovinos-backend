@@ -1,6 +1,7 @@
 package com.meurebanho.sistema_gestao_de_bovinos_backend.lote;
 
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.AssignAnimalsRequestDTO;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteDetailsResponseDTO;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteRequestDTO;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,11 @@ public class LoteController {
     @GetMapping
     public ResponseEntity<List<LoteResponseDTO>> getMeusLotes() {
         return ResponseEntity.ok(loteService.getLotesByFazenda());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<LoteDetailsResponseDTO> getLoteDetails(@PathVariable Long id) {
+        return ResponseEntity.ok(loteService.getLoteDetails(id));
     }
 
     @PutMapping("/{id}")

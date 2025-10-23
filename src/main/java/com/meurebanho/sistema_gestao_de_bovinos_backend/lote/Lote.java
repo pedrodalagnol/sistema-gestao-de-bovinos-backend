@@ -1,5 +1,6 @@
 package com.meurebanho.sistema_gestao_de_bovinos_backend.lote;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.animal.Animal;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.usuario.Fazenda;
 import jakarta.persistence.*;
@@ -28,5 +29,6 @@ public class Lote {
     private Fazenda fazenda;
 
     @OneToMany(mappedBy = "lote", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JsonManagedReference
     private List<Animal> animais = new ArrayList<>();
 }

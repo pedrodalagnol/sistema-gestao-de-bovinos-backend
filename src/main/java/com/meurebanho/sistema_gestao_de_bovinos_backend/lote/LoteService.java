@@ -2,9 +2,14 @@ package com.meurebanho.sistema_gestao_de_bovinos_backend.lote;
 
 import com.meurebanho.sistema_gestao_de_bovinos_backend.animal.Animal;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.animal.AnimalRepository;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.animal.AnimalService;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.animal.AnimalResponseDTO;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.AssignAnimalsRequestDTO;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteDetailsResponseDTO;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteRequestDTO;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteResponseDTO;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.pasto.Pasto;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.pasto.PastoRepository;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.usuario.Usuario;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,13 +26,17 @@ public class LoteService {
 
     private final LoteRepository loteRepository;
     private final AnimalRepository animalRepository;
+    private final PastoRepository pastoRepository;
+    private final AnimalService animalService; // Injetado
 
     private Usuario getAuthenticatedUser() {
         return (Usuario) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
     private LoteResponseDTO mapToResponseDTO(Lote lote) {
-        return new LoteResponseDTO(lote.getId(), lote.getNome(), lote.getDescricao());
+        Optional<Pasto> pastoOptional = pastoRepository.findByLoteAlocadoId(lote.getId());
+        String pastoAtualNome = pastoOptional.map(Pasto::getNome).orElse(null);
+        return new LoteResponseDTO(lote.getId(), lote.getNome(), lote.getDescricao(), pastoAtualNome);
     }
 
     @Transactional
@@ -35,7 +45,7 @@ public class LoteService {
         Lote lote = new Lote();
         lote.setNome(requestDTO.nome());
         lote.setDescricao(requestDTO.descricao());
-        lote.setFazenda(usuarioLogado.getFazenda()); // Link com a fazenda do usuário
+        lote.setFazenda(usuarioLogado.getFazenda());
 
         Lote savedLote = loteRepository.save(lote);
         return mapToResponseDTO(savedLote);
@@ -46,6 +56,22 @@ public class LoteService {
         return loteRepository.findByFazendaId(usuarioLogado.getFazenda().getId()).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public LoteDetailsResponseDTO getLoteDetails(Long loteId) {
+        Usuario usuarioLogado = getAuthenticatedUser();
+        Lote lote = loteRepository.findByIdAndFazendaId(loteId, usuarioLogado.getFazenda().getId())
+                .orElseThrow(() -> new RuntimeException("Lote não encontrado ou não pertence à sua fazenda."));
+
+        List<AnimalResponseDTO> animalDTOs = lote.getAnimais().stream()
+                .map(animalService::mapToResponseDTO) // Reutiliza o mapper do AnimalService
+                .collect(Collectors.toList());
+
+        Optional<Pasto> pastoOptional = pastoRepository.findByLoteAlocadoId(lote.getId());
+        String pastoAtualNome = pastoOptional.map(Pasto::getNome).orElse(null);
+
+        return new LoteDetailsResponseDTO(lote.getId(), lote.getNome(), lote.getDescricao(), pastoAtualNome, animalDTOs);
     }
 
     @Transactional
@@ -66,7 +92,6 @@ public class LoteService {
         Lote lote = loteRepository.findByIdAndFazendaId(loteId, usuarioLogado.getFazenda().getId())
                 .orElseThrow(() -> new RuntimeException("Lote não encontrado ou não pertence à sua fazenda."));
 
-        // Antes de deletar o lote, remove a associação dos animais com ele
         List<Animal> animaisNoLote = lote.getAnimais();
         for (Animal animal : animaisNoLote) {
             animal.setLote(null);
@@ -81,22 +106,18 @@ public class LoteService {
         Usuario usuarioLogado = getAuthenticatedUser();
         Long fazendaId = usuarioLogado.getFazenda().getId();
 
-        // 1. Valida se o lote de destino pertence à fazenda do usuário
         Lote lote = loteRepository.findByIdAndFazendaId(loteId, fazendaId)
                 .orElseThrow(() -> new RuntimeException("Lote de destino não encontrado."));
 
-        // 2. Busca todos os animais a serem movidos
         List<Animal> animais = animalRepository.findAllById(request.animalIds());
 
-        // 3. Validação de segurança: Garante que TODOS os animais pertencem à fazenda do usuário
         for (Animal animal : animais) {
             if (!animal.getFazenda().getId().equals(fazendaId)) {
                 throw new SecurityException("Tentativa de mover animal que não pertence à sua fazenda.");
             }
-            animal.setLote(lote); // Atribui o lote ao animal
+            animal.setLote(lote);
         }
 
-        // 4. Salva todos os animais atualizados
         animalRepository.saveAll(animais);
     }
 }

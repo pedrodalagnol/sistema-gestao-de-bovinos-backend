@@ -1,5 +1,7 @@
 package com.meurebanho.sistema_gestao_de_bovinos_backend.dto.animal;
 
+import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteResponseDTO;
+
 import java.util.Date;
 
 // DTO para enviar dados de um animal para o frontend
@@ -9,5 +11,6 @@ public record AnimalResponseDTO(
         String sexo,
         String raca,
         Date dataNascimento,
-        String status
+        String status,
+        LoteResponseDTO lote
 ) {}

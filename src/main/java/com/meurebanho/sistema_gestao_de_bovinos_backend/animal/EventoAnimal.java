@@ -1,5 +1,6 @@
 package com.meurebanho.sistema_gestao_de_bovinos_backend.animal;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,6 +17,7 @@ public class EventoAnimal {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "animal_id", nullable = false)
+    @JsonBackReference
     private Animal animal;
 
     @Enumerated(EnumType.STRING)
@@ -33,11 +35,18 @@ public class EventoAnimal {
 
     // Enum para os tipos de evento
     public enum TipoEvento {
-        PESAGEM,
-        MEDICACAO,
-        NASCIMENTO,
-        MORTE,
-        VENDA,
-        TRANSFERENCIA
+        PESAGEM,         // Registro de peso do animal
+        VACINACAO,       // Aplicação de vacina
+        VERMIFUGACAO,    // Aplicação de vermífugo
+        MEDICACAO,       // Outros tratamentos ou medicações
+        INSEMINACAO,     // Inseminação artificial
+        DIAGNOSTICO_GESTACAO, // Diagnóstico de prenhez
+        PARTO,           // Registro de parto
+        IDENTIFICACAO,   // Aplicação de brinco, marcação a fogo, etc.
+        MUDANCA_LOTE,    // Movimentação do animal entre lotes/pastos
+        ENTRADA_LOTE,    // Entrada do animal no rebanho
+        SAIDA_LOTE,      // Saída do animal do rebanho (sem ser venda ou morte)
+        VENDA,           // Venda do animal
+        MORTE            // Morte do animal
     }
 }

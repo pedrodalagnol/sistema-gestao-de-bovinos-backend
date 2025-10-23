@@ -49,7 +49,12 @@ public class AnimalController {
 
     @PostMapping("/{id}/eventos")
     public ResponseEntity<EventoAnimal> addEvento(@PathVariable Long id, @RequestBody EventoRequestDTO requestDTO) {
-        EventoAnimal novoEvento = animalService.addEvento(id, requestDTO);
-        return new ResponseEntity<>(novoEvento, HttpStatus.CREATED);
+        return new ResponseEntity<>(animalService.addEvento(id, requestDTO), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}/remover-do-lote")
+    public ResponseEntity<Void> removerAnimalDoLote(@PathVariable Long id) {
+        animalService.removerAnimalDoLote(id);
+        return ResponseEntity.ok().build();
     }
 }

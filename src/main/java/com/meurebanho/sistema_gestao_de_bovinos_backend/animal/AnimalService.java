@@ -4,6 +4,10 @@ import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.animal.AnimalDetails
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.animal.AnimalRequestDTO;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.animal.AnimalResponseDTO;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.animal.EventoRequestDTO;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.dto.lote.LoteResponseDTO;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.lote.Lote;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.pasto.Pasto;
+import com.meurebanho.sistema_gestao_de_bovinos_backend.pasto.PastoRepository;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.usuario.Fazenda;
 import com.meurebanho.sistema_gestao_de_bovinos_backend.usuario.Usuario;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +25,7 @@ public class AnimalService {
 
     private final AnimalRepository animalRepository;
     private final EventoAnimalRepository eventoAnimalRepository;
+    private final PastoRepository pastoRepository; // Injetado para corrigir o erro
 
     @Transactional
     public AnimalResponseDTO createAnimal(AnimalRequestDTO requestDTO) {
@@ -51,14 +57,28 @@ public class AnimalService {
     }
 
     // Método helper para mapear a Entidade para o DTO de resposta
-    private AnimalResponseDTO mapToResponseDTO(Animal animal) {
+    public AnimalResponseDTO mapToResponseDTO(Animal animal) {
+        LoteResponseDTO loteDTO = null;
+        if (animal.getLote() != null) {
+            Lote lote = animal.getLote();
+            Optional<Pasto> pastoOptional = pastoRepository.findByLoteAlocadoId(lote.getId());
+            String pastoAtualNome = pastoOptional.map(Pasto::getNome).orElse(null);
+            loteDTO = new LoteResponseDTO(
+                    lote.getId(),
+                    lote.getNome(),
+                    lote.getDescricao(),
+                    pastoAtualNome
+            );
+        }
+
         return new AnimalResponseDTO(
                 animal.getId(),
                 animal.getIdentificador(),
                 animal.getSexo(),
                 animal.getRaca(),
                 animal.getDataNascimento(),
-                animal.getStatus()
+                animal.getStatus(),
+                loteDTO
         );
     }
 
@@ -99,10 +119,15 @@ public class AnimalService {
         Usuario usuarioLogado = getAuthenticatedUser();
         Long fazendaId = usuarioLogado.getFazenda().getId();
 
-        Animal animal = animalRepository.findByIdAndFazendaId(animalId, fazendaId)
+        // Usa o novo método do repositório para buscar o animal com seus eventos
+        Animal animal = animalRepository.findByIdWithEventos(animalId, fazendaId)
                 .orElseThrow(() -> new RuntimeException("Animal não encontrado."));
 
-        List<EventoAnimal> historico = eventoAnimalRepository.findByAnimalIdOrderByDataEventoAsc(animalId);
+        // A lista de eventos já foi carregada, agora apenas a ordenamos
+        List<EventoAnimal> historico = animal.getEventos().stream()
+                .sorted(java.util.Comparator.comparing(EventoAnimal::getDataEvento))
+                .collect(Collectors.toList());
+
         double gmd = calcularGMD(historico);
 
         return new AnimalDetailsResponseDTO(
@@ -160,5 +185,17 @@ public class AnimalService {
         }
 
         return ganhoDePeso / dias;
+    }
+
+    @Transactional
+    public void removerAnimalDoLote(Long animalId) {
+        Usuario usuarioLogado = getAuthenticatedUser();
+        Long fazendaId = usuarioLogado.getFazenda().getId();
+
+        Animal animal = animalRepository.findByIdAndFazendaId(animalId, fazendaId)
+                .orElseThrow(() -> new RuntimeException("Animal não encontrado ou não pertence à sua fazenda."));
+
+        animal.setLote(null);
+        animalRepository.save(animal);
     }
 }
